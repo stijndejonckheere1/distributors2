@@ -758,7 +758,8 @@ async function loadData() {
       .bindPopup(`<div class="popup-name">${d.name}</div>
         <div class="popup-addr">${d.address}, ${d.postal} ${d.city}</div>
         ${d.phone ? `<div class="popup-phone">📞 <a href="tel:${d.phone.replace(/\s/g,'')}" style="color:#BA1B20;text-decoration:none">${d.phone}</a></div>` : ''}
-        ${d.email ? `<div class="popup-phone">✉️ <a href="mailto:${d.email}" style="color:#BA1B20;text-decoration:none">${d.email}</a></div>` : ''}`);
+        ${d.email ? `<div class="popup-phone">✉️ <a href="mailto:${d.email}" style="color:#BA1B20;text-decoration:none">${d.email}</a></div>` : ''}
+        <a class="popup-route" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d.address+' '+d.postal+' '+d.city)}" target="_blank">🗺️ Route berekenen</a>`);
     marker._distData = d;
     marker._active = false;
     allMarkers.push(marker);
