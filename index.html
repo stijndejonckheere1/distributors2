@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vind een verdeler</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<style>
+  :root {
+    --brand:     #1a3c5e;
+    --accent:    #e8531a;
+    --accent2:   #f0a500;
+    --light:     #f4f7fb;
+    --card:      #ffffff;
+    --text:      #1a1a2e;
+    --muted:     #6b7a8f;
+    --border:    #dde3ec;
+    --radius:    14px;
+    --shadow:    0 4px 24px rgba(26,60,94,.10);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--light);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .hero {
+    background: var(--brand);
+    padding: 48px 32px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 40px,
+      rgba(255,255,255,.03) 40px,
+      rgba(255,255,255,.03) 80px
+    );
+    pointer-events: none;
+  }
+  .hero-pill {
+    display: inline-block;
+    background: rgba(232,83,26,.18);
+    color: #ffb38a;
+    font-family: 'Syne', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 99px;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .hero h1 span { color: var(--accent2); }
+  .hero p {
+    color: rgba(255,255,255,.65);
+    font-size: 1rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── Layout ── */
+  .wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+
+  /* ── Search card ── */
+  .search-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px 28px 24px;
+    margin-bottom: 28px;
+    border: 1px solid var(--border);
+  }
+  .search-card h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .search-card h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 18px;
+    background: var(--accent);
+    border-radius: 4px;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 160px;
+  }
+  .field label {
+    font-size: .78rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  .field input, .field select {
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .95rem;
+    color: var(--text);
+    background: var(--light);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(26,60,94,.12);
+    background: #fff;
+  }
+
+  .btn-search {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 12px 26px;
+    font-family: 'Syne', sans-serif;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, transform .1s, box-shadow .2s;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgba(232,83,26,.3);
+    align-self: flex-end;
+  }
+  .btn-search:hover { background: #c94010; transform: translateY(-1px); box-shadow: 0 5px 18px rgba(232,83,26,.35); }
+  .btn-search:active { transform: translateY(0); }
+  .btn-search:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; transform: none; }
+
+  /* ── Status bar ── */
+  #status-bar {
+    font-size: .88rem;
+    color: var(--muted);
+    padding: 10px 0 0;
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #status-bar.found { color: #1a7a4a; }
+  #status-bar.error { color: #c0392b; }
+  .spinner {
+    width: 15px; height: 15px;
+    border: 2px solid var(--border);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  .spinner.active { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Map + results layout ── */
+  .map-results-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .map-results-grid { grid-template-columns: 1fr; }
+    #results-panel { order: 2; }
+    #map-wrap { order: 1; }
+  }
+
+  /* ── Map ── */
+  #map-wrap {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  #map { height: 520px; width: 100%; }
+
+  /* ── Results panel ── */
+  #results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 520px;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .result-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color .18s, box-shadow .18s, transform .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--accent);
+    border-radius: 4px 0 0 4px;
+    transform: scaleY(0);
+    transition: transform .2s;
+  }
+  .result-card:hover, .result-card.active {
+    border-color: var(--brand);
+    box-shadow: 0 4px 18px rgba(26,60,94,.14);
+    transform: translateX(2px);
+  }
+  .result-card:hover::before, .result-card.active::before { transform: scaleY(1); }
+
+  .rc-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: .98rem;
+    color: var(--brand);
+    margin-bottom: 4px;
+  }
+  .rc-addr {
+    font-size: .83rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .rc-dist {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(26,60,94,.07);
+    color: var(--brand);
+    font-size: .78rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 99px;
+  }
+  .rc-dist svg { opacity: .7; }
+
+  .rc-phone {
+    font-size: .82rem;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  .rc-phone a { color: var(--accent); text-decoration: none; }
+  .rc-phone a:hover { text-decoration: underline; }
+
+  .no-results {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1.5px dashed var(--border);
+    padding: 36px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .no-results svg { margin-bottom: 10px; opacity: .4; }
+  .no-results p { font-size: .9rem; }
+
+  /* ── Leaflet overrides ── */
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px !important;
+    box-shadow: 0 6px 24px rgba(26,60,94,.18) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    border: 1.5px solid var(--border) !important;
+  }
+  .leaflet-popup-content { margin: 14px 16px !important; }
+  .popup-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--brand);
+    font-size: .98rem;
+    margin-bottom: 4px;
+  }
+  .popup-addr { font-size: .82rem; color: var(--muted); }
+  .popup-phone { font-size: .82rem; color: var(--accent); margin-top: 4px; }
+
+  /* radius circle */
+  .leaflet-interactive.radius-circle {
+    fill: rgba(26,60,94,.06);
+    stroke: var(--brand);
+    stroke-dasharray: 8 5;
+    stroke-width: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-pill">Verdelers netwerk</div>
+  <h1>Vind een verdeler<br/><span>bij u in de buurt</span></h1>
+  <p>Voer uw postcode in en ontdek alle officiële verdelers binnen uw gewenste straal.</p>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="wrapper">
+
+  <!-- Search -->
+  <div class="search-card">
+    <h2>Zoek op postcode</h2>
+    <div class="search-row">
+      <div class="field">
+        <label>Postcode</label>
+        <input type="text" id="postal-input" placeholder="bv. 9000" maxlength="4" inputmode="numeric"/>
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Zoekstraal</label>
+        <select id="radius-select">
+          <option value="25">25 km</option>
+          <option value="50" selected>50 km</option>
+        </select>
+      </div>
+      <button class="btn-search" id="search-btn" onclick="doSearch()">Zoeken →</button>
+    </div>
+    <div id="status-bar">
+      <span class="spinner" id="spinner"></span>
+      <span id="status-text">Voer een postcode in om te beginnen.</span>
+    </div>
+  </div>
+
+  <!-- Map + results -->
+  <div class="map-results-grid">
+    <div id="map-wrap"><div id="map"></div></div>
+    <div id="results-panel">
+      <div class="no-results">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <p>Geen verdelers weergegeven.<br/>Voer een postcode in om te zoeken.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- PapaParse for CSV -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIGURATION — update these two lines
+// ═══════════════════════════════════════════════════════
+
+// Paste the "published to web" CSV URL from your Google Sheet here.
+// File > Share > Publish to web > CSV > Copy link
+const DATA_URL = ""; // data is hardcoded below
+
+// ═══════════════════════════════════════════════════════
+//  DISTRIBUTOR DATA
+// ═══════════════════════════════════════════════════════
+const SAMPLE_DISTRIBUTORS = [
+  { name:"Deschacht Farciennes",              address:"Rue Philippe Maystadt 16",         city:"Farciennes",          postal:"6240", phone:"+32(0)71 15 12 10", lat:50.4485834, lng:4.529631 },
+  { name:"Lucria",                            address:"Gentsesteenweg 380A",              city:"Zele",                postal:"9240", phone:"09 379 20 93",       lat:51.054019,  lng:3.9803994 },
+  { name:"Jules Frans",                       address:"Vaatjesstraat 14",                 city:"Putte",               postal:"2580", phone:"015 76 76 36",       lat:51.043744,  lng:4.606954 },
+  { name:"De Koninck bvba",                   address:"Tragel 48",                        city:"Aalst",               postal:"9300", phone:"053 78 48 04",       lat:50.9515225, lng:4.0364417 },
+  { name:"Roefs Paul",                        address:"Vaartstraat 9",                    city:"Beerse",              postal:"2340", phone:"014 61 43 19",       lat:51.3238371, lng:4.8317466 },
+  { name:"Delrue nv",                         address:"Ringlaan 49",                      city:"Ichtegem",            postal:"8480", phone:"051 59 11 99",       lat:51.1005505, lng:3.0235513 },
+  { name:"Segers Marcel en zonen",            address:"Pareinpark 77",                    city:"Beveren Waas",        postal:"9120", phone:"03 775 80 82",       lat:51.2209048, lng:4.2659847 },
+  { name:"Deschacht Herent",                  address:"Tildonksesteenweg 100",            city:"Herent",              postal:"3020", phone:"+32(0)16 14 09 95", lat:50.9138691, lng:4.6646473 },
+  { name:"Deschacht Herstal",                 address:"P.I. des Hauts-Sarts Deuxième Avenue 24", city:"Herstal",     postal:"4040", phone:"+32(0)4 256 56 10", lat:50.6952697, lng:5.6207887 },
+  { name:"Deschacht Hasselt",                 address:"Genkersteenweg 311a",              city:"Hasselt",             postal:"3500", phone:"+32 (0)11 14 07 40",lat:50.9431965, lng:5.3778819 },
+  { name:"SMET GEDIMAT",                      address:"Nieuwenrodestraat 13",             city:"Wolvertem",           postal:"1861", phone:"015 71 11 19",       lat:50.9820483, lng:4.3489706 },
+  { name:"GEDIMAT DE SMET",                   address:"Industrielaan 4",                  city:"Ingelmunster",        postal:"8770", phone:"051 30 98 73",       lat:50.931606,  lng:3.2468661 },
+  { name:"Ebtrading",                         address:"Rue du Chêne Maillard 4",          city:"Thuin",               postal:"6530", phone:"+32 0475 26 44 27", lat:50.3466974, lng:4.3165478 },
+  { name:"Elena bvba",                        address:"Mechelsesteenweg 42",              city:"Wezenbeek Oppem",     postal:"1970", phone:"+32 02 731 14 70",  lat:50.8451886, lng:4.5004775 },
+  { name:"Domspro",                           address:"Brusselsesteenweg 220",            city:"Merchtem",            postal:"1785", phone:"+32 02 269 43 77",  lat:50.9418421, lng:4.2476155 },
+  { name:"Meynen Tuinmaterialen",             address:"Molsebaan 36",                     city:"Meerhout",            postal:"2450", phone:"+32 014 30 82 01",  lat:51.1424027, lng:5.0866269 },
+  { name:"Vandix",                            address:"Kuipweg 6",                        city:"Oostende",            postal:"8400", phone:"+32 59 239 940",    lat:51.2073621, lng:2.9783431 },
+  { name:"Tanghe Gedimat",                    address:"Zuidstraat 5",                     city:"Ichtegem",            postal:"8480", phone:"+32 051 58 80 12",  lat:51.1018064, lng:3.0318495 },
+  { name:"Strubbe tegels",                    address:"Fabriekweg 71",                    city:"Eernegem",            postal:"8480", phone:"+32 059 29 06 15",  lat:51.1238864, lng:3.0215584 },
+  { name:"Interieurcenter dekeyser",          address:"Rodestraat 5",                     city:"Veurne",              postal:"8630", phone:"+32 058 42 12 46",  lat:51.0721604, lng:2.6731989 },
+  { name:"Devolder Coussens Handyhome",       address:"Tieltstraat 62",                   city:"Ruiselede",           postal:"8755", phone:"",                  lat:51.0338819, lng:3.3927813 },
+  { name:"Technicel Gent",                    address:"Industrieweg 18a/001 Unit5",       city:"Wondelgem",           postal:"9032", phone:"",                  lat:51.0998484, lng:3.7075229 },
+  { name:"DS plastics",                       address:"Mosten 18",                        city:"Lokeren",             postal:"9160", phone:"",                  lat:51.0775174, lng:3.9950617 },
+  { name:"Deganck nv",                        address:"Hundelgemsesteenweg 290",          city:"Merelbeke",           postal:"9820", phone:"",                  lat:51.0131564, lng:3.7517831 },
+  { name:"Deganck nv",                        address:"Rozenstraat 5",                    city:"Nazareth",            postal:"9810", phone:"",                  lat:50.9746815, lng:3.655294 },
+  { name:"Artstone nv",                       address:"Lochtemanweg 51",                  city:"Heusden-Zolder",      postal:"3550", phone:"+32 011 45 60 00",  lat:51.0310328, lng:5.2283303 },
+  { name:"Artstone nv",                       address:"Grote Steenweg 344",               city:"Lede",                postal:"9340", phone:"+32 053 70 26 30",  lat:50.9567973, lng:3.9017192 },
+  { name:"Van Pelt",                          address:"Kanaaldijk 25",                    city:"Schoten",             postal:"2900", phone:"03 380 10 20",       lat:51.2393723, lng:4.4897772 },
+  { name:"Glaesener Betz",                    address:"Rue Edmond Reuter 3",              city:"Contern",             postal:"5326", phone:"00352 236 464",      lat:49.5974246, lng:6.2173111 },
+  { name:"Glaesener Betz",                    address:"Grand Rue 82",                     city:"Redange",             postal:"8510", phone:"00352 236 464",      lat:49.7648521, lng:5.88195 },
+  { name:"Stock Ath",                         address:"Chaussee de Tournai 196",          city:"Irchonwelz",          postal:"7801", phone:"068 26 98 00",       lat:50.6298128, lng:3.7524072 },
+  { name:"Pierre & Sol",                      address:"Chaussee de Lille 442",            city:"Tournai",             postal:"7500", phone:"069 54 99 00",       lat:50.6042388, lng:3.3510607 },
+  { name:"Constructor",                       address:"Rue de la providence 17",          city:"Marchienne-au-pont",  postal:"6030", phone:"071 32 07 58",       lat:50.4114465, lng:4.3974925 },
+  { name:"Eurograniet",                       address:"Rue de la justice 89",             city:"Wasmuel",             postal:"7390", phone:"065 78 55 68",       lat:50.4354042, lng:3.8444436 },
+  { name:"Amacro",                            address:"Heideveld 60",                     city:"Beersel",             postal:"1654", phone:"02 356 96 27",       lat:50.7608063, lng:4.2672662 },
+  { name:"Wijckmans bouwmaterialen",          address:"Zwartenhoekstraat 1",              city:"Kwaadmechelen",       postal:"3945", phone:"013 66 10 21",       lat:51.1000611, lng:5.1345116 },
+  { name:"Paesen Bouwexpo",                   address:"Steenweg Linde 55",                city:"Peer",                postal:"3990", phone:"011 66 55 50",       lat:51.1036128, lng:5.4484051 },
+  { name:"Oosterbosch Bouwmat",               address:"Riemsterweg 157",                  city:"Bilzen",              postal:"3742", phone:"089 41 13 68",       lat:50.8515776, lng:5.536932 },
+  { name:"Nijst Natuursteen",                 address:"Taunusweg 12",                     city:"Bilzen",              postal:"3740", phone:"089 41 62 79",       lat:50.9062514, lng:5.523979 },
+  { name:"Meuffels Bouwmat",                  address:"Volksstraat 26",                   city:"Diepenbeek",          postal:"3590", phone:"011 32 37 03",       lat:50.9165599, lng:5.4558542 },
+  { name:"Martens Robben Bouwmat",            address:"Stevoortse Kiezel 466",            city:"Stevoort",            postal:"3512", phone:"011 31 22 07",       lat:50.9177017, lng:5.2457774 },
+  { name:"Koning Gebroeders Bouwmaterialen",  address:"Molenstraat 104",                  city:"Neerpelt",            postal:"3910", phone:"011 64 12 49",       lat:51.2289611, lng:5.4543717 },
+  { name:"Deckers bouwpunt",                  address:"Rijksweg 881",                     city:"Elen",                postal:"3650", phone:"089 56 75 21",       lat:51.0665468, lng:5.7512843 },
+  { name:"Van Pelt",                          address:"Kwikaard 118",                     city:"Zoersel",             postal:"2980", phone:"03 380 10 20",       lat:51.2680067, lng:4.6218857 },
+  { name:"Vanderwee",                         address:"Ondernemerstraat 1",               city:"Lier",                postal:"2500", phone:"03 480 84 20",       lat:51.1456437, lng:4.5595025 },
+  { name:"Mattijs",                           address:"Knotwilgenweg 31",                 city:"Heist-op-den-Berg",   postal:"2220", phone:"015 24 11 38",       lat:51.0552274, lng:4.7129316 },
+  { name:"Technicel Westerlo",                address:"Zone Reme 4",                      city:"Westerlo",            postal:"2260", phone:"0800 11 040",        lat:51.136208,  lng:4.8611224 },
+  { name:"Schutters Bouwstoffen",             address:"Kurgerstraat 167",                 city:"Antwerpen",           postal:"2660", phone:"03 501 90 65",       lat:51.185769,  lng:4.3660184 },
+  { name:"Pyl Tegelcenter",                   address:"Kampstraat 17",                    city:"Burcht",              postal:"2070", phone:"03 252 75 21",       lat:51.20121,   lng:4.33491 },
+  { name:"Pauwels Bouwmaterialen",            address:"Mosselgoren 117",                  city:"Geel",                postal:"2440", phone:"014 21 50 41",       lat:51.1904929, lng:4.9157179 },
+  { name:"Lemmens tegels",                    address:"Steenweg op blaasveld 97",         city:"Heffen",              postal:"2801", phone:"03 886 23 11",       lat:51.0471855, lng:4.4026544 },
+  { name:"Kerkstoel Bouwmaterialen",          address:"Leopoldlei 54",                    city:"Heist-op-den-Berg",   postal:"2220", phone:"015 24 47 26",       lat:51.0804855, lng:4.7288091 },
+  { name:"Deschacht Hoogstraten",             address:"Sint Lenaartseweg 36",             city:"Hoogstraten",         postal:"2320", phone:"03 340 20 60",       lat:51.3880082, lng:4.7434783 },
+  { name:"Deschacht Geel",                    address:"Bell-Telephonelaan 3A",            city:"Geel",                postal:"2440", phone:"014 56 38 30",       lat:51.1274265, lng:4.9486648 },
+  { name:"Deschacht Aartselaar",              address:"Langlaarsteenweg 168",             city:"Aartselaar",          postal:"2630", phone:"03 870 69 69",       lat:51.1245996, lng:4.3771004 },
+  { name:"Deroover Gedimat",                  address:"Schrieksesteenweg 160",            city:"Booischot",           postal:"2221", phone:"015 23 31 10",       lat:51.0253242, lng:4.7472774 },
+  { name:"Bridts Gedimat",                    address:"Pater de Dekenstraat 42",          city:"Antwerpen",           postal:"2610", phone:"03 827 26 39",       lat:51.1685546, lng:4.3920378 },
+  { name:"Borms bouwmaterialen",              address:"Winkelstraat 52",                  city:"Sint-Amands",         postal:"2890", phone:"052 33 23 46",       lat:51.0481291, lng:4.2070917 },
+  { name:"Vandevelde beton",                  address:"Schaapheuzel 2",                   city:"Opwijk",              postal:"1745", phone:"052 35 69 69",       lat:50.937847,  lng:4.1720724 },
+  { name:"LF tegels",                         address:"Gentsesteenweg 201",               city:"Asse",                postal:"1730", phone:"02 311 76 22",       lat:50.9206053, lng:4.1667651 },
+  { name:"Willaert bouwmaterialen",           address:"Oostmeetstraat 100",               city:"Koekelare",           postal:"8680", phone:"051 58 80 65",       lat:51.0906192, lng:2.9644675 },
+  { name:"West Vlaamse Steencentrale",        address:"Kortrijkstraat 396",               city:"Wevelgem",            postal:"8560", phone:"056 41 17 39",       lat:50.8172501, lng:3.2132077 },
+  { name:"Vlaeminck Frans bouwcentrum",       address:"Ingelmunstersteenweg 72",          city:"Oostrozebeke",        postal:"8780", phone:"056 66 71 03",       lat:50.9194831, lng:3.3159608 },
+  { name:"Vinckier bouwmaterialen",           address:"Oostendestraat 35",                city:"Diksmuide",           postal:"8600", phone:"051 50 00 67",       lat:51.0394849, lng:2.8659525 },
+  { name:"Vermeersch bvba",                   address:"Wijnendalestraat 200",             city:"Diksmuide",           postal:"8600", phone:"051 59 10 00",       lat:51.0654119, lng:2.9362511 },
+  { name:"Vermeersch bvba",                   address:"Blankenbergse Steenweg 402",       city:"Brugge",              postal:"8000", phone:"050 32 97 80",       lat:51.2466451, lng:3.1966718 },
+  { name:"Van Hulle bouwservice",             address:"Galgenveldstraat 16",              city:"Tielt",               postal:"8700", phone:"051 40 14 04",       lat:51.00227,   lng:3.343636 },
+  { name:"Van Glabeke bouwmaterialen",        address:"Kooigemstraat 31",                 city:"Kortrijk",            postal:"8510", phone:"056 45 55 16",       lat:50.7401498, lng:3.3355019 },
+  { name:"Technicel Zwevegem",                address:"Esserstraat 2",                    city:"Zwevegem",            postal:"8550", phone:"0800 11 040",        lat:50.8249218, lng:3.351203 },
+  { name:"Technicel Brugge",                  address:"Dirk Martensstraat 2",             city:"Brugge",              postal:"8200", phone:"0800 11 040",        lat:51.2086982, lng:3.2040381 },
+  { name:"Stonetrend",                        address:"Gistelsesteenweg 546",             city:"Sint-Andries",        postal:"8200", phone:"050 30 03 97",       lat:51.1971609, lng:3.1789379 },
+  { name:"Obeton",                            address:"Schaapbruggestraat 26",            city:"Roeselare",           postal:"8800", phone:"051 68 00 68",       lat:50.9394168, lng:3.1554891 },
+  { name:"Meersseman en zoon bvba",           address:"Nijverheidslaan 7",                city:"Geluwe",              postal:"8940", phone:"056 51 16 81",       lat:50.8126434, lng:3.0712091 },
+  { name:"Lemahieu bouwmaterialen",           address:"Kemmelstraat 24",                  city:"Kemmel",              postal:"8956", phone:"057 21 63 33",       lat:50.7918436, lng:2.841678 },
+  { name:"Intermat Gistel",                   address:"Oostendsebaan 114",                city:"Gistel",              postal:"8470", phone:"059 27 85 96",       lat:51.1558442, lng:2.9438308 },
+  { name:"Intermat Meulebe",                  address:"Nijverheidsstraat 36",             city:"Meulebeke",           postal:"8760", phone:"051 48 87 68",       lat:50.9597443, lng:3.2948546 },
+  { name:"Inter Tegel",                       address:"Drieslaan 35",                     city:"Gullegem",            postal:"8560", phone:"056 43 00 00",       lat:50.8488502, lng:3.1836673 },
+  { name:"Heyndrickx bouwmaterialen",         address:"Ringlaan 58",                      city:"Koekelare",           postal:"8680", phone:"051 58 13 61",       lat:51.0921177, lng:2.9731973 },
+  { name:"Fosse bvba",                        address:"Ieperstraat 149",                  city:"Staden",              postal:"8840", phone:"051 74 74 85",       lat:50.9648488, lng:2.9998986 },
+  { name:"Deschacht Zedelgem",                address:"Torhoutsesteenweg 306",            city:"Zedelgem",            postal:"8210", phone:"050 27 61 11",       lat:51.113114,  lng:3.142962 },
+  { name:"Deschacht Tielt",                   address:"Szamotulystraat 3",                city:"Tielt",               postal:"8700", phone:"051 68 93 77",       lat:50.9992456, lng:3.3554032 },
+  { name:"Tegels De Prest",                   address:"Moekerkesteenweg 47",              city:"Damme",               postal:"8340", phone:"050 35 59 08",       lat:51.2365829, lng:3.3400765 },
+  { name:"Bebomat nv",                        address:"Brugsesteenweg 475",               city:"Kuurne",              postal:"8520", phone:"056 71 22 21",       lat:50.8719905, lng:3.2714059 },
+  { name:"Van Vlaenderen Gedimat",            address:"Brusselsesteenweg 535",            city:"Gent",                postal:"9050", phone:"09 230 02 09",       lat:51.0326585, lng:3.7593623 },
+  { name:"Technicel Lokeren",                 address:"Oeverstraat 19a",                  city:"Lokeren",             postal:"9160", phone:"0800 11 040",        lat:51.096483,  lng:4.0190557 },
+  { name:"Schelfhout",                        address:"Moutstraat 12",                    city:"Aalst",               postal:"9300", phone:"053 76 94 24",       lat:50.9420629, lng:4.0436823 },
+  { name:"Rodrigues Tegels",                  address:"Antwerpsesteenweg 26",             city:"Lokeren",             postal:"9160", phone:"09 348 21 36",       lat:51.1156604, lng:4.0102099 },
+  { name:"Plasticentre",                      address:"Rozenaaksesteenweg 9",             city:"Ronse",               postal:"9600", phone:"055 60 33 38",       lat:50.7489589, lng:3.5623447 },
+  { name:"Pasistone",                         address:"Nijverheidsweg 17",                city:"Merelbeke",           postal:"9820", phone:"09 253 02 05",       lat:51.0018446, lng:3.7310266 },
+  { name:"Leus Bouwcentrum Sleidinge",        address:"Sleidinge-Dorp 3",                 city:"Evergem",             postal:"9940", phone:"09 357 35 37",       lat:51.1304515, lng:3.6779876 },
+  { name:"Leus Bouwcentrum Melle",            address:"Pontstraat 54",                    city:"Melle",               postal:"9090", phone:"09 210 11 00",       lat:51.0016786, lng:3.8083472 },
+  { name:"Intermat",                          address:"Brugsesteenweg 297",               city:"Eeklo",               postal:"9900", phone:"09 238 43 29",       lat:51.1981625, lng:3.5296479 },
+  { name:"Interdal",                          address:"Hazewindstraat 65",                city:"Sint Niklaas",        postal:"9100", phone:"03 776 27 67",       lat:51.1594225, lng:4.1325498 },
+  { name:"Interdal",                          address:"Spinnerijstraat 4",                city:"Zele",                postal:"9240", phone:"052 42 55 15",       lat:51.0748427, lng:4.0468596 },
+  { name:"HHN Tegels",                        address:"Brakelsesteenweg 430",             city:"Ninove",              postal:"9400", phone:"054 32 81 31",       lat:50.8309507, lng:3.9701146 },
+  { name:"Eurocaro",                          address:"Schouwingstraat 45",               city:"Gent",                postal:"9032", phone:"09 257 09 04",       lat:51.1006049, lng:3.7115813 },
+  { name:"D&C Bouwmaterialen",                address:"Frankrijkstraat 11",               city:"Temse",               postal:"9140", phone:"03 344 03 07",       lat:51.140438,  lng:4.1978152 },
+  { name:"De Wilde",                          address:"Toleindestraat 25",                city:"Lochristi",           postal:"9080", phone:"09 355 51 49",       lat:51.0804952, lng:3.8839867 },
+  { name:"Deschacht Hamme",                   address:"Horizonsquare 1-2",                city:"Hamme",               postal:"9220", phone:"052 25 87 20",       lat:51.0759011, lng:4.1270233 },
+  { name:"Deschacht Oostakker",               address:"Antwerpsesteenweg 1068",           city:"Oostakker",           postal:"9041", phone:"09 355 74 54",       lat:51.0780679, lng:3.7842785 },
+  { name:"De Kinder Hardware",                address:"Provincialebaan 136",              city:"Buggenhout",          postal:"9255", phone:"052 33 24 09",       lat:51.030684,  lng:4.1926496 },
+  { name:"De Kijndt Tegels",                  address:"Zeelaan 23",                       city:"Eeklo",               postal:"9900", phone:"09 377 24 18",       lat:51.2003117, lng:3.5207744 },
+  { name:"De Groote Gedimat",                 address:"Langerbruggekaai 5",               city:"Gent",                postal:"9000", phone:"09 253 86 08",       lat:51.1161041, lng:3.7485714 },
+  { name:"De Clerck Luc",                     address:"Stoktevijver 57c",                 city:"Zomergem",            postal:"9932", phone:"09 372 70 53",       lat:51.1367095, lng:3.5592895 },
+  { name:"Claus tegelimport",                 address:"Gentsesteenweg 158-160",           city:"Erpe-Mere",           postal:"9420", phone:"053 80 61 72",       lat:50.9390123, lng:4.0198076 },
+  { name:"Christiaens nv",                    address:"Industrielaan 9",                  city:"Eeklo",               postal:"9900", phone:"09 377 56 33",       lat:51.1815692, lng:3.539689 },
+  { name:"Buysse Gedimat",                    address:"Weegse 55",                        city:"Evergem",             postal:"9940", phone:"09 357 32 27",       lat:51.1233098, lng:3.661459 },
+  { name:"Bouwcenter Lokeren",                address:"Knokkestraat 25",                  city:"Lokeren",             postal:"9160", phone:"09 328 08 24",       lat:51.1034678, lng:3.9947134 },
+];
+
+// Belgian postal → lat/lng lookup (largest cities + common codes)
+const POSTAL_COORDS = {
+  "1000":{"lat":50.8503,"lng":4.3517},"1020":{"lat":50.8810,"lng":4.3490},"1030":{"lat":50.8680,"lng":4.3760},
+  "1040":{"lat":50.8380,"lng":4.3870},"1050":{"lat":50.8230,"lng":4.3680},"1060":{"lat":50.8330,"lng":4.3420},
+  "1070":{"lat":50.8450,"lng":4.2990},"1080":{"lat":50.8600,"lng":4.3250},"1082":{"lat":50.8690,"lng":4.2850},
+  "1083":{"lat":50.8540,"lng":4.2710},"1090":{"lat":50.8780,"lng":4.3480},"1140":{"lat":50.8900,"lng":4.4060},
+  "1150":{"lat":50.8440,"lng":4.4150},"1160":{"lat":50.8180,"lng":4.4110},"1170":{"lat":50.8050,"lng":4.3700},
+  "1180":{"lat":50.8050,"lng":4.3250},"1190":{"lat":50.8110,"lng":4.3000},"1200":{"lat":50.8480,"lng":4.4320},
+  "1210":{"lat":50.8640,"lng":4.3650},"1300":{"lat":50.6760,"lng":4.5960},"1310":{"lat":50.6330,"lng":4.5640},
+  "1320":{"lat":50.6240,"lng":4.6780},"1330":{"lat":50.6510,"lng":4.6170},"1340":{"lat":50.6200,"lng":4.5400},
+  "1348":{"lat":50.6690,"lng":4.6170},"1400":{"lat":50.6050,"lng":4.3660},"1410":{"lat":50.6570,"lng":4.2890},
+  "1420":{"lat":50.6360,"lng":4.3160},"1430":{"lat":50.5850,"lng":4.4890},"1435":{"lat":50.5900,"lng":4.5240},
+  "1440":{"lat":50.5670,"lng":4.5880},"1450":{"lat":50.5850,"lng":4.6510},"1460":{"lat":50.5720,"lng":4.2460},
+  "1470":{"lat":50.5380,"lng":4.3120},"1480":{"lat":50.5820,"lng":4.1880},"1490":{"lat":50.5530,"lng":4.1460},
+  "1500":{"lat":50.8060,"lng":4.1790},"1600":{"lat":50.7990,"lng":4.1020},"1700":{"lat":50.8550,"lng":4.1550},
+  "1730":{"lat":50.9050,"lng":4.1660},"1745":{"lat":50.9240,"lng":4.1100},"1755":{"lat":50.9040,"lng":4.0660},
+  "1760":{"lat":50.8860,"lng":4.0420},"1780":{"lat":50.9260,"lng":4.2140},"1800":{"lat":50.9290,"lng":4.4240},
+  "1820":{"lat":50.9540,"lng":4.4820},"1830":{"lat":50.9600,"lng":4.2790},"1840":{"lat":50.9770,"lng":4.3050},
+  "1850":{"lat":50.9720,"lng":4.2350},"1860":{"lat":51.0090,"lng":4.2590},"1880":{"lat":50.9960,"lng":4.3330},
+  "1910":{"lat":50.9400,"lng":4.5300},"1930":{"lat":50.8830,"lng":4.4960},"1932":{"lat":50.8720,"lng":4.5040},
+  "1950":{"lat":50.8600,"lng":4.5440},"1970":{"lat":50.8980,"lng":4.5620},"1980":{"lat":50.9100,"lng":4.5790},
+  "2000":{"lat":51.2194,"lng":4.4025},"2018":{"lat":51.2060,"lng":4.4190},"2020":{"lat":51.1990,"lng":4.3990},
+  "2030":{"lat":51.2410,"lng":4.3840},"2040":{"lat":51.2750,"lng":4.3700},"2050":{"lat":51.2490,"lng":4.4150},
+  "2060":{"lat":51.2300,"lng":4.4130},"2100":{"lat":51.2040,"lng":4.4500},"2110":{"lat":51.2130,"lng":4.4880},
+  "2140":{"lat":51.2270,"lng":4.4570},"2150":{"lat":51.2420,"lng":4.4580},"2160":{"lat":51.2620,"lng":4.5060},
+  "2170":{"lat":51.2690,"lng":4.4420},"2180":{"lat":51.2780,"lng":4.4260},"2200":{"lat":51.2120,"lng":4.7220},
+  "2220":{"lat":51.0780,"lng":4.6750},"2235":{"lat":51.0860,"lng":4.7390},"2240":{"lat":51.1090,"lng":4.6870},
+  "2243":{"lat":51.1220,"lng":4.6630},"2250":{"lat":51.1310,"lng":4.7580},"2260":{"lat":51.2100,"lng":4.8150},
+  "2270":{"lat":51.1740,"lng":4.8150},"2275":{"lat":51.1430,"lng":4.8060},"2280":{"lat":51.1950,"lng":4.8570},
+  "2288":{"lat":51.2400,"lng":4.9230},"2290":{"lat":51.1870,"lng":4.9230},"2300":{"lat":51.3220,"lng":4.9440},
+  "2310":{"lat":51.3430,"lng":4.9630},"2320":{"lat":51.2990,"lng":4.9860},"2323":{"lat":51.3140,"lng":4.9650},
+  "2330":{"lat":51.3440,"lng":4.8990},"2340":{"lat":51.3060,"lng":4.8730},"2350":{"lat":51.2800,"lng":4.9700},
+  "2360":{"lat":51.3280,"lng":4.8300},"2370":{"lat":51.4080,"lng":5.0040},"2380":{"lat":51.3880,"lng":4.8690},
+  "2381":{"lat":51.4100,"lng":4.9290},"2382":{"lat":51.4430,"lng":4.9800},"2387":{"lat":51.4240,"lng":5.0590},
+  "2390":{"lat":51.3630,"lng":4.9990},"2400":{"lat":51.1896,"lng":5.1144},"2431":{"lat":51.1490,"lng":5.0040},
+  "2440":{"lat":51.1350,"lng":4.9180},"2450":{"lat":51.1010,"lng":5.0400},"2460":{"lat":51.1390,"lng":5.1120},
+  "2470":{"lat":51.1790,"lng":5.1130},"2480":{"lat":51.2120,"lng":5.1780},"2490":{"lat":51.1590,"lng":5.1580},
+  "2500":{"lat":51.0890,"lng":4.6020},"2520":{"lat":51.0690,"lng":4.6720},"2530":{"lat":51.0280,"lng":4.6330},
+  "2540":{"lat":51.0690,"lng":4.5830},"2547":{"lat":51.0490,"lng":4.5760},"2550":{"lat":51.0500,"lng":4.5170},
+  "2560":{"lat":51.0610,"lng":4.7650},"2570":{"lat":51.1040,"lng":4.5200},"2580":{"lat":51.0260,"lng":4.7320},
+  "2590":{"lat":51.1350,"lng":4.5390},"2600":{"lat":51.1830,"lng":4.4840},"2610":{"lat":51.1750,"lng":4.4690},
+  "2620":{"lat":51.1570,"lng":4.5230},"2630":{"lat":51.1200,"lng":4.5590},"2640":{"lat":51.1420,"lng":4.6040},
+  "2650":{"lat":51.1560,"lng":4.6400},"2660":{"lat":51.1360,"lng":4.6790},"2800":{"lat":51.0259,"lng":4.4777},
+  "2811":{"lat":51.0350,"lng":4.4930},"2812":{"lat":51.0500,"lng":4.5270},"2820":{"lat":51.0770,"lng":4.4760},
+  "2830":{"lat":51.0760,"lng":4.3790},"2840":{"lat":51.0440,"lng":4.3590},"2845":{"lat":51.0840,"lng":4.3460},
+  "2850":{"lat":51.0940,"lng":4.3830},"2860":{"lat":51.0490,"lng":4.3010},"2870":{"lat":51.0890,"lng":4.3180},
+  "2880":{"lat":51.0620,"lng":4.2590},"2890":{"lat":51.0520,"lng":4.2390},"2900":{"lat":51.2410,"lng":4.6570},
+  "2910":{"lat":51.2230,"lng":4.6430},"2920":{"lat":51.2130,"lng":4.6040},"2930":{"lat":51.2640,"lng":4.6150},
+  "2940":{"lat":51.2950,"lng":4.6400},"2950":{"lat":51.2780,"lng":4.5620},"2960":{"lat":51.3230,"lng":4.6190},
+  "2970":{"lat":51.3050,"lng":4.5710},"2980":{"lat":51.2980,"lng":4.6640},"2990":{"lat":51.3440,"lng":4.6340},
+  "3000":{"lat":50.8798,"lng":4.7005},"3001":{"lat":50.8740,"lng":4.6900},"3010":{"lat":50.8640,"lng":4.7100},
+  "3012":{"lat":50.8540,"lng":4.6770},"3018":{"lat":50.8650,"lng":4.6400},"3020":{"lat":50.8760,"lng":4.7540},
+  "3040":{"lat":50.7890,"lng":4.7580},"3050":{"lat":50.8290,"lng":4.7130},"3053":{"lat":50.8190,"lng":4.6830},
+  "3054":{"lat":50.8040,"lng":4.7010},"3060":{"lat":50.7840,"lng":4.6970},"3070":{"lat":50.8460,"lng":4.7930},
+  "3078":{"lat":50.8640,"lng":4.8560},"3080":{"lat":50.8170,"lng":4.7730},"3090":{"lat":50.8870,"lng":4.8490},
+  "3110":{"lat":50.9870,"lng":4.5360},"3118":{"lat":50.9340,"lng":4.5760},"3120":{"lat":50.9270,"lng":4.7310},
+  "3128":{"lat":50.9030,"lng":4.7720},"3130":{"lat":50.9800,"lng":4.7150},"3140":{"lat":51.0010,"lng":4.7730},
+  "3150":{"lat":50.9620,"lng":4.8070},"3190":{"lat":51.0320,"lng":4.7310},"3200":{"lat":50.9830,"lng":4.8370},
+  "3210":{"lat":50.9220,"lng":4.8500},"3211":{"lat":50.9360,"lng":4.9200},"3212":{"lat":50.9570,"lng":4.9590},
+  "3220":{"lat":50.8990,"lng":4.9510},"3270":{"lat":50.8660,"lng":4.9810},"3290":{"lat":50.8370,"lng":5.1350},
+  "3300":{"lat":50.8160,"lng":5.0600},"3320":{"lat":50.8500,"lng":5.0980},"3350":{"lat":50.8050,"lng":5.1670},
+  "3360":{"lat":50.7840,"lng":5.0310},"3370":{"lat":50.7860,"lng":5.2000},"3380":{"lat":50.8100,"lng":5.2450},
+  "3390":{"lat":50.7500,"lng":5.1800},"3400":{"lat":50.7520,"lng":5.0160},"3404":{"lat":50.7340,"lng":5.0320},
+  "3440":{"lat":50.7840,"lng":4.9010},"3450":{"lat":50.8260,"lng":4.8760},"3460":{"lat":50.7510,"lng":4.8990},
+  "3470":{"lat":50.7170,"lng":5.0280},"3500":{"lat":50.9311,"lng":5.3378},"3510":{"lat":50.9010,"lng":5.3960},
+  "3511":{"lat":50.9190,"lng":5.2880},"3512":{"lat":50.9470,"lng":5.2640},"3520":{"lat":50.9720,"lng":5.4380},
+  "3530":{"lat":51.0080,"lng":5.5000},"3540":{"lat":51.0490,"lng":5.4900},"3545":{"lat":51.0680,"lng":5.4230},
+  "3550":{"lat":51.0520,"lng":5.3820},"3560":{"lat":51.0210,"lng":5.3830},"3570":{"lat":51.0030,"lng":5.4530},
+  "3580":{"lat":51.0680,"lng":5.5340},"3581":{"lat":51.0710,"lng":5.4590},"3582":{"lat":51.0960,"lng":5.4940},
+  "3583":{"lat":51.1040,"lng":5.4590},"3590":{"lat":51.0430,"lng":5.6140},"3600":{"lat":50.9649,"lng":5.4987},
+  "3620":{"lat":50.9290,"lng":5.5760},"3621":{"lat":50.9470,"lng":5.5890},"3630":{"lat":50.8960,"lng":5.6010},
+  "3631":{"lat":50.9010,"lng":5.6360},"3640":{"lat":51.0270,"lng":5.6080},"3650":{"lat":51.0680,"lng":5.6540},
+  "3660":{"lat":51.0600,"lng":5.5920},"3665":{"lat":51.0790,"lng":5.5630},"3668":{"lat":51.0920,"lng":5.5260},
+  "3670":{"lat":51.0350,"lng":5.6420},"3680":{"lat":50.9640,"lng":5.6380},"3690":{"lat":50.9200,"lng":5.6280},
+  "3700":{"lat":50.7860,"lng":5.4350},"3717":{"lat":50.7620,"lng":5.3870},"3720":{"lat":50.7870,"lng":5.3740},
+  "3721":{"lat":50.7710,"lng":5.3560},"3722":{"lat":50.7590,"lng":5.3530},"3723":{"lat":50.7450,"lng":5.3870},
+  "3724":{"lat":50.7570,"lng":5.4100},"3730":{"lat":50.8130,"lng":5.4890},"3740":{"lat":50.8430,"lng":5.5430},
+  "3742":{"lat":50.8630,"lng":5.5090},"3746":{"lat":50.8570,"lng":5.4480},"3770":{"lat":50.7890,"lng":5.5310},
+  "3790":{"lat":50.7490,"lng":5.5810},"3800":{"lat":50.8050,"lng":5.2470},"3803":{"lat":50.8360,"lng":5.2310},
+  "3806":{"lat":50.8180,"lng":5.2040},"3830":{"lat":50.7720,"lng":5.3190},"3840":{"lat":50.7650,"lng":5.2140},
+  "3850":{"lat":50.8440,"lng":5.1350},"3870":{"lat":50.7310,"lng":5.2500},"3890":{"lat":50.7050,"lng":5.2980},
+  "3891":{"lat":50.6900,"lng":5.2790},"3900":{"lat":51.1930,"lng":5.4120},"3910":{"lat":51.2130,"lng":5.4670},
+  "3920":{"lat":51.2180,"lng":5.3600},"3930":{"lat":51.2680,"lng":5.6320},"3940":{"lat":51.1770,"lng":5.5650},
+  "3941":{"lat":51.2000,"lng":5.5350},"3945":{"lat":51.2410,"lng":5.5610},"3950":{"lat":51.1560,"lng":5.5650},
+  "3960":{"lat":51.1170,"lng":5.5010},"3970":{"lat":51.1220,"lng":5.4530},"3971":{"lat":51.1380,"lng":5.4080},
+  "3980":{"lat":51.1520,"lng":5.3200},"3990":{"lat":51.1840,"lng":5.3650},"4000":{"lat":50.6450,"lng":5.5730},
+  "8000":{"lat":51.2093,"lng":3.2240},"8200":{"lat":51.1887,"lng":3.1970},"8210":{"lat":51.2470,"lng":3.2170},
+  "8300":{"lat":51.1890,"lng":3.2890},"8310":{"lat":51.2010,"lng":3.2740},"8320":{"lat":51.2220,"lng":3.3100},
+  "8340":{"lat":51.1710,"lng":3.2490},"8370":{"lat":51.2640,"lng":3.1000},"8380":{"lat":51.2410,"lng":3.1190},
+  "8400":{"lat":51.2297,"lng":2.9170},"8420":{"lat":51.2440,"lng":2.9610},"8421":{"lat":51.2500,"lng":3.0040},
+  "8430":{"lat":51.2730,"lng":2.8900},"8450":{"lat":51.2820,"lng":2.8540},"8460":{"lat":51.2360,"lng":2.8470},
+  "8470":{"lat":51.1620,"lng":2.9690},"8480":{"lat":51.1500,"lng":3.0530},"8490":{"lat":51.1700,"lng":3.1070},
+  "8500":{"lat":50.8284,"lng":3.2648},"8510":{"lat":50.8130,"lng":3.2640},"8511":{"lat":50.8090,"lng":3.2230},
+  "8520":{"lat":50.8660,"lng":3.2800},"8530":{"lat":50.8810,"lng":3.2430},"8531":{"lat":50.8740,"lng":3.2080},
+  "8540":{"lat":50.8450,"lng":3.2240},"8550":{"lat":50.8120,"lng":3.3270},"8560":{"lat":50.8540,"lng":3.3870},
+  "8570":{"lat":50.8270,"lng":3.3780},"8580":{"lat":50.7860,"lng":3.2940},"8587":{"lat":50.7680,"lng":3.3370},
+  "8600":{"lat":51.1040,"lng":2.8700},"8610":{"lat":50.9320,"lng":2.8520},"8620":{"lat":51.0000,"lng":2.8990},
+  "8630":{"lat":51.0460,"lng":2.8420},"8640":{"lat":51.0090,"lng":3.0430},"8647":{"lat":51.0180,"lng":2.9750},
+  "8650":{"lat":50.9610,"lng":3.0220},"8660":{"lat":50.9190,"lng":2.9420},"8670":{"lat":51.0680,"lng":2.8510},
+  "8680":{"lat":51.0080,"lng":2.8060},"8690":{"lat":50.9870,"lng":2.8080},"8700":{"lat":51.0490,"lng":3.0960},
+  "8710":{"lat":50.9810,"lng":3.2130},"8720":{"lat":50.9100,"lng":3.1530},"8730":{"lat":50.9420,"lng":3.2670},
+  "8740":{"lat":50.9780,"lng":3.3030},"8750":{"lat":50.9480,"lng":3.1860},"8755":{"lat":50.9360,"lng":3.1570},
+  "8760":{"lat":50.8890,"lng":3.1920},"8770":{"lat":50.9060,"lng":3.3280},"8780":{"lat":50.9060,"lng":3.3900},
+  "8790":{"lat":50.8894,"lng":3.4280},"8800":{"lat":50.9447,"lng":3.1214},"8810":{"lat":50.9310,"lng":3.1830},
+  "8820":{"lat":50.9970,"lng":3.1270},"8830":{"lat":50.9750,"lng":3.1840},"8840":{"lat":51.0200,"lng":3.1370},
+  "8850":{"lat":51.0380,"lng":3.1740},"8860":{"lat":50.9890,"lng":3.0300},"8870":{"lat":50.9610,"lng":3.0880},
+  "8880":{"lat":50.9460,"lng":3.1020},"8890":{"lat":50.9790,"lng":3.2570},"8900":{"lat":50.8510,"lng":2.8760},
+  "8902":{"lat":50.8680,"lng":2.8200},"8904":{"lat":50.8540,"lng":2.8540},"8906":{"lat":50.8780,"lng":2.8000},
+  "8908":{"lat":50.8390,"lng":2.9340},"8920":{"lat":50.8920,"lng":2.7880},"8930":{"lat":50.8760,"lng":2.8590},
+  "8940":{"lat":50.8560,"lng":2.9110},"8950":{"lat":50.9060,"lng":2.9650},"8951":{"lat":50.9250,"lng":2.9500},
+  "8952":{"lat":50.9370,"lng":2.9060},"8953":{"lat":50.9540,"lng":2.8650},"8954":{"lat":50.9620,"lng":2.9040},
+  "8956":{"lat":50.9190,"lng":2.9910},"8957":{"lat":50.9310,"lng":2.9850},"8958":{"lat":50.9540,"lng":3.0010},
+  "8970":{"lat":50.8060,"lng":2.8690},"8972":{"lat":50.7870,"lng":2.8630},"8978":{"lat":50.7760,"lng":2.9400},
+  "8980":{"lat":50.8230,"lng":2.9740},"9000":{"lat":51.0543,"lng":3.7174},"9030":{"lat":51.0820,"lng":3.6860},
+  "9031":{"lat":51.0570,"lng":3.6600},"9032":{"lat":51.0360,"lng":3.6550},"9040":{"lat":51.0930,"lng":3.7420},
+  "9041":{"lat":51.0820,"lng":3.7740},"9042":{"lat":51.1070,"lng":3.7760},"9050":{"lat":51.0270,"lng":3.7290},
+  "9051":{"lat":51.0100,"lng":3.7200},"9052":{"lat":51.0100,"lng":3.6780},"9060":{"lat":51.0340,"lng":3.7700},
+  "9070":{"lat":51.0430,"lng":3.7960},"9080":{"lat":51.0230,"lng":3.8310},"9090":{"lat":51.0050,"lng":3.8010},
+  "9100":{"lat":51.1571,"lng":4.1430},"9111":{"lat":51.1390,"lng":4.0870},"9112":{"lat":51.1220,"lng":4.0380},
+  "9120":{"lat":51.1730,"lng":4.0740},"9130":{"lat":51.2010,"lng":4.1610},"9140":{"lat":51.1450,"lng":4.2020},
+  "9150":{"lat":51.1140,"lng":4.1810},"9160":{"lat":51.1400,"lng":4.2470},"9170":{"lat":51.1850,"lng":4.2800},
+  "9180":{"lat":51.1670,"lng":3.9780},"9185":{"lat":51.1540,"lng":3.9290},"9190":{"lat":51.1280,"lng":3.9700},
+  "9200":{"lat":51.0274,"lng":4.1010},"9220":{"lat":51.0060,"lng":4.0570},"9230":{"lat":51.0530,"lng":4.0610},
+  "9240":{"lat":51.0130,"lng":3.9550},"9250":{"lat":51.0450,"lng":3.9570},"9255":{"lat":51.0680,"lng":3.9710},
+  "9260":{"lat":51.0200,"lng":3.9950},"9270":{"lat":51.0810,"lng":4.0000},"9280":{"lat":50.9900,"lng":3.9990},
+  "9290":{"lat":51.0360,"lng":3.8760},"9300":{"lat":50.9376,"lng":4.0360},"9308":{"lat":50.9750,"lng":4.0690},
+  "9310":{"lat":50.9420,"lng":3.9920},"9320":{"lat":50.9820,"lng":4.0070},"9340":{"lat":50.9580,"lng":4.1310},
+  "9400":{"lat":50.8570,"lng":3.9770},"9401":{"lat":50.8710,"lng":3.9410},"9402":{"lat":50.8550,"lng":3.9270},
+  "9403":{"lat":50.8400,"lng":3.9560},"9404":{"lat":50.8730,"lng":3.9860},"9406":{"lat":50.8600,"lng":4.0280},
+  "9420":{"lat":50.8940,"lng":3.9050},"9450":{"lat":50.8580,"lng":3.9290},"9451":{"lat":50.8410,"lng":3.9120},
+  "9470":{"lat":50.7870,"lng":3.9490},"9473":{"lat":50.7680,"lng":3.9870},"9500":{"lat":50.8930,"lng":3.8380},
+  "9506":{"lat":50.8620,"lng":3.8440},"9520":{"lat":50.9310,"lng":3.8750},"9521":{"lat":50.9000,"lng":3.8720},
+  "9550":{"lat":50.9030,"lng":3.7640},"9551":{"lat":50.8850,"lng":3.7430},"9552":{"lat":50.9260,"lng":3.7390},
+  "9570":{"lat":50.9000,"lng":3.7080},"9600":{"lat":50.8570,"lng":3.7310},"9620":{"lat":50.8460,"lng":3.6770},
+  "9630":{"lat":50.8010,"lng":3.6620},"9636":{"lat":50.7750,"lng":3.6720},"9660":{"lat":50.7540,"lng":3.6040},
+  "9667":{"lat":50.7450,"lng":3.6600},"9680":{"lat":50.7730,"lng":3.7540},"9688":{"lat":50.8100,"lng":3.7130},
+  "9690":{"lat":50.7210,"lng":3.5880},"9700":{"lat":50.9420,"lng":3.5660},"9750":{"lat":50.9590,"lng":3.5460},
+  "9770":{"lat":50.8990,"lng":3.5710},"9790":{"lat":50.8850,"lng":3.4920},"9800":{"lat":50.9290,"lng":3.5110},
+  "9810":{"lat":50.9560,"lng":3.6410},"9820":{"lat":50.9950,"lng":3.6380},"9840":{"lat":51.0170,"lng":3.6210},
+  "9850":{"lat":51.0100,"lng":3.5730},"9860":{"lat":50.9820,"lng":3.5870},"9880":{"lat":51.0350,"lng":3.5320},
+  "9890":{"lat":50.9410,"lng":3.4840},"9900":{"lat":51.1040,"lng":3.5680},"9910":{"lat":51.1280,"lng":3.5940},
+  "9920":{"lat":51.1420,"lng":3.6590},"9921":{"lat":51.1590,"lng":3.6480},"9930":{"lat":51.0930,"lng":3.6570},
+  "9940":{"lat":51.1240,"lng":3.7150},"9950":{"lat":51.0720,"lng":3.6040},"9960":{"lat":51.1480,"lng":3.6890},
+  "9968":{"lat":51.1580,"lng":3.7510},"9970":{"lat":51.1700,"lng":3.6380},"9980":{"lat":51.1870,"lng":3.5780},
+  "9988":{"lat":51.1880,"lng":3.6420},"9990":{"lat":51.1990,"lng":3.6820},"9992":{"lat":51.2130,"lng":3.7090},
+};
+
+// ═══════════════════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════════════════
+const map = L.map('map', { zoomControl: true }).setView([50.85, 4.35], 8);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OSM contributors',
+  maxZoom: 18
+}).addTo(map);
+
+// Custom icon
+function makeIcon(active=false) {
+  return L.divIcon({
+    className: '',
+    iconSize: [30, 38],
+    iconAnchor: [15, 38],
+    popupAnchor: [0, -38],
+    html: `<svg width="30" height="38" viewBox="0 0 30 38" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z"
+        fill="${active ? '#e8531a' : '#1a3c5e'}" />
+      <circle cx="15" cy="15" r="6" fill="white"/>
+    </svg>`
+  });
+}
+
+let allMarkers = [];
+let circleLayer = null;
+let userMarker = null;
+let distributors = [];
+let lastFound = [];
+
+// ═══════════════════════════════════════════════════════
+//  LOAD DATA
+// ═══════════════════════════════════════════════════════
+async function loadData() {
+  if (DATA_URL && DATA_URL.trim() !== '') {
+    try {
+      const text = await fetch(DATA_URL).then(r => r.text());
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      distributors = parsed.data.map(r => ({
+        name:    (r.name    || r.Name    || '').trim(),
+        address: (r.address || r.Address || '').trim(),
+        city:    (r.city    || r.City    || '').trim(),
+        postal:  (r.postal  || r.Postal  || r.postcode || '').trim(),
+        phone:   (r.phone   || r.Phone   || '').trim(),
+        lat:     parseFloat(r.lat || r.Lat || 0),
+        lng:     parseFloat(r.lng || r.Lng || r.lon || r.Lon || 0),
+      })).filter(d => d.lat && d.lng);
+      console.log(`Loaded ${distributors.length} distributors from remote CSV.`);
+    } catch (e) {
+      console.warn('Could not load remote data, falling back to sample.', e);
+      distributors = SAMPLE_DISTRIBUTORS;
+    }
+  } else {
+    distributors = SAMPLE_DISTRIBUTORS;
+  }
+
+  // Add all markers to map (dimmed initially)
+  distributors.forEach(d => {
+    const marker = L.marker([d.lat, d.lng], { icon: makeIcon(false) })
+      .addTo(map)
+      .bindPopup(`<div class="popup-name">${d.name}</div>
+        <div class="popup-addr">${d.address}, ${d.postal} ${d.city}</div>
+        ${d.phone ? `<div class="popup-phone">📞 ${d.phone}</div>` : ''}`);
+    marker._distData = d;
+    marker._active = false;
+    allMarkers.push(marker);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  HAVERSINE
+// ═══════════════════════════════════════════════════════
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════
+async function doSearch() {
+  const postalRaw = document.getElementById('postal-input').value.trim();
+  const radiusKm  = parseInt(document.getElementById('radius-select').value);
+  const statusEl  = document.getElementById('status-text');
+  const spinner   = document.getElementById('spinner');
+  const btn       = document.getElementById('search-btn');
+
+  if (!/^\d{4}$/.test(postalRaw)) {
+    setStatus('Voer een geldige Belgische postcode in (4 cijfers).', 'error');
+    return;
+  }
+
+  spinner.classList.add('active');
+  btn.disabled = true;
+  setStatus('Postcode opzoeken…', '');
+
+  // look up coordinates
+  const coords = POSTAL_COORDS[postalRaw];
+  let centerLat, centerLng;
+
+  if (coords) {
+    centerLat = coords.lat;
+    centerLng = coords.lng;
+  } else {
+    // fallback: geocode via nominatim
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${postalRaw}&country=BE&format=json&limit=1`);
+      const json = await res.json();
+      if (!json.length) throw new Error('not found');
+      centerLat = parseFloat(json[0].lat);
+      centerLng = parseFloat(json[0].lon);
+    } catch {
+      spinner.classList.remove('active');
+      btn.disabled = false;
+      setStatus(`Postcode ${postalRaw} niet gevonden. Controleer en probeer opnieuw.`, 'error');
+      return;
+    }
+  }
+
+  // Filter within radius
+  const found = distributors
+    .map(d => ({ ...d, distance: haversine(centerLat, centerLng, d.lat, d.lng) }))
+    .filter(d => d.distance <= radiusKm)
+    .sort((a,b) => a.distance - b.distance);
+
+  // Update map
+  if (circleLayer) map.removeLayer(circleLayer);
+  if (userMarker)  map.removeLayer(userMarker);
+
+  circleLayer = L.circle([centerLat, centerLng], {
+    radius: radiusKm * 1000,
+    className: 'radius-circle',
+    fillColor: '#1a3c5e',
+    fillOpacity: 0.06,
+    color: '#1a3c5e',
+    weight: 1.5,
+    dashArray: '8,5',
+  }).addTo(map);
+
+  userMarker = L.marker([centerLat, centerLng], {
+    icon: L.divIcon({
+      className: '',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      html: `<div style="width:20px;height:20px;background:#e8531a;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>`
+    })
+  }).addTo(map).bindPopup(`<b>Uw locatie</b><br/>Postcode ${postalRaw}`);
+
+  // Restyle all markers
+  allMarkers.forEach(m => {
+    const inRadius = found.some(f => f.lat === m._distData.lat && f.lng === m._distData.lng);
+    m.setIcon(makeIcon(inRadius));
+    m.setOpacity(inRadius ? 1 : 0.25);
+    m._active = inRadius;
+  });
+
+  // Fit bounds
+  const bounds = circleLayer.getBounds();
+  map.fitBounds(bounds, { padding: [30, 30] });
+
+  // Render results panel
+  lastFound = found;
+  renderResults(found, radiusKm);
+
+  spinner.classList.remove('active');
+  btn.disabled = false;
+
+  if (found.length > 0) {
+    setStatus(`${found.length} verdeler${found.length>1?'s':''} gevonden binnen ${radiusKm} km.`, 'found');
+  } else {
+    setStatus(`Geen verdelers gevonden binnen ${radiusKm} km van postcode ${postalRaw}.`, 'error');
+  }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status-bar');
+  el.className = type ? `status-bar ${type}` : '';
+  document.getElementById('status-text').textContent = msg;
+}
+
+function renderResults(found, radiusKm) {
+  const panel = document.getElementById('results-panel');
+
+  if (!found.length) {
+    panel.innerHTML = `<div class="no-results">
+      <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <p>Geen verdelers gevonden<br/>binnen ${radiusKm} km.</p>
+    </div>`;
+    return;
+  }
+
+  panel.innerHTML = found.map((d, i) => `
+    <div class="result-card" id="rc-${i}" data-idx="${i}">
+      <div class="rc-name">${d.name}</div>
+      <div class="rc-addr">${d.address}<br/>${d.postal} ${d.city}</div>
+      <span class="rc-dist">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        ${d.distance.toFixed(1)} km
+      </span>
+      ${d.phone ? `<div class="rc-phone">📞 <a href="tel:${d.phone.replace(/\s/g,'')}">${d.phone}</a></div>` : ''}
+    </div>
+  `).join('');
+}
+
+// Event delegation — one listener on the panel, works for all cards
+document.getElementById('results-panel').addEventListener('click', function(e) {
+  const card = e.target.closest('.result-card');
+  if (!card) return;
+  // don't intercept phone link clicks
+  if (e.target.tagName === 'A') return;
+  const idx = parseInt(card.dataset.idx);
+  const d = lastFound[idx];
+  if (!d) return;
+
+  map.setView([d.lat, d.lng], 14, { animate: true });
+  const marker = allMarkers.find(m => m._distData.lat === d.lat && m._distData.lng === d.lng);
+  if (marker) marker.openPopup();
+
+  document.querySelectorAll('.result-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+// ── Enter key support ──
+document.getElementById('postal-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+// ── Init ──
+loadData();
+</script>
+</body>
+</html>
