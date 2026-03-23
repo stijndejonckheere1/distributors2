@@ -157,7 +157,7 @@
 
   .btn-search {
     background: var(--accent);
-    color: #FFFFFF;
+    color: #ffffff;
     border: none;
     border-radius: 9px;
     padding: 12px 26px;
@@ -240,7 +240,10 @@
     cursor: pointer;
     transition: border-color .18s, box-shadow .18s, transform .15s;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
   }
   .result-card::before {
     content: '';
@@ -265,15 +268,19 @@
     font-size: .98rem;
     color: var(--brand);
     margin-bottom: 4px;
+    display: block !important;
+    visibility: visible !important;
   }
   .rc-addr {
     font-size: .83rem;
     color: var(--muted);
     margin-bottom: 6px;
     line-height: 1.4;
+    display: block !important;
+    visibility: visible !important;
   }
   .rc-dist {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     gap: 4px;
     background: rgba(26,60,94,.07);
@@ -282,6 +289,7 @@
     font-weight: 600;
     padding: 3px 9px;
     border-radius: 99px;
+    visibility: visible !important;
   }
   .rc-dist svg { opacity: .7; }
 
