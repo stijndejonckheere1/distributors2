@@ -383,8 +383,8 @@
 <!-- ── HERO ── -->
 <div class="hero">
   <div class="hero-pill">Verdelers netwerk</div>
-  <h1>Vind een verdeler<br/><span>bij u in de buurt</span></h1>
-  <p>Voer uw postcode in en ontdek alle officiële verdelers binnen uw gewenste straal.</p>
+  <h1>Vind een verdeler<br/><span>bij jou in de buurt</span></h1>
+  <p>Voer jouw postcode in en ontdek alle officiële verdelers binnen jouw gewenste straal.</p>
 </div>
 
 <!-- ── MAIN ── -->
@@ -409,7 +409,7 @@
     </div>
     <div id="status-bar">
       <span class="spinner" id="spinner"></span>
-      <span id="status-text">Voer een postcode in om te beginnen.</span>
+      <span id="status-text">Voer jouw postcode in om te beginnen.</span>
     </div>
   </div>
 
@@ -419,7 +419,7 @@
     <div id="results-panel">
       <div class="no-results">
         <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <p>Geen verdelers weergegeven.<br/>Voer een postcode in om te zoeken.</p>
+        <p>Geen verdelers weergegeven.<br/>Voer jouw postcode in om te zoeken.</p>
       </div>
     </div>
   </div>
@@ -890,7 +890,7 @@ async function doSearch() {
       iconAnchor: [10, 10],
       html: `<div style="width:20px;height:20px;background:#e8531a;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>`
     })
-  }).addTo(map).bindPopup(`<b>Uw locatie</b><br/>Postcode ${postalRaw}`);
+  }).addTo(map).bindPopup(`<b>Jouw locatie</b><br/>Postcode ${postalRaw}`);
 
   // Restyle all markers
   allMarkers.forEach(m => {
